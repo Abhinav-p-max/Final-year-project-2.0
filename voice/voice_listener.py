@@ -26,6 +26,7 @@ class VoiceListener:
             "computer open mouse",
             "computer close mouse",
             "computer open keyboard",
+            "computer quick keyboard",
             "computer close keyboard",
             "computer scroll up",
             "computer scroll down",

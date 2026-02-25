@@ -37,8 +37,8 @@ class KeyboardGestureController:
 
         window = config.WINDOW_NAME_KEYBOARD
         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(window, 300, 220)
-        cv2.moveWindow(window, 0, 600)
+        cv2.resizeWindow(window, config.CAM_WINDOW_WIDTH, config.CAM_WINDOW_HEIGHT)
+        cv2.moveWindow(window, config.CAM_WINDOW_X, config.CAM_WINDOW_Y)
         
         hand_recog = HandRecog(HLabel.MAJOR)
 
@@ -66,8 +66,9 @@ class KeyboardGestureController:
                 cv2.putText(frame, "PINCH=Type | V=Enter | PINKY=Space | FIST=BackSp", (10, 20), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, config.COLOR_TEXT, 1)
                             
-                # Draw Suggestion Zones (roughly top 20% of screen)
-                cv2.line(frame, (0, int(h*0.2)), (w, int(h*0.2)), (255,255,0), 1)
+                # Draw Suggestion Zones
+                zone_h = int(h * config.KEYBOARD_SUGGESTION_ZONE_HEIGHT)
+                cv2.line(frame, (0, zone_h), (w, zone_h), (255,255,0), 1)
                 cv2.putText(frame, "SUGGESTIONS", (10, int(h*0.15)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,0), 1)
 
                 hovered_key = None
@@ -118,10 +119,10 @@ class KeyboardGestureController:
 
                     # --- TYPING LOGIC ---
                     # Check if in suggestion zone (top 20%)
-                    if y_raw < 0.2:
+                    if y_raw < config.KEYBOARD_SUGGESTION_ZONE_HEIGHT:
                         # 3 zones
-                        if x_raw < 0.33: hovered_suggestion_idx = 0
-                        elif x_raw < 0.66: hovered_suggestion_idx = 1
+                        if x_raw < config.KEYBOARD_SUGGESTION_ZONE_1_X: hovered_suggestion_idx = 0
+                        elif x_raw < config.KEYBOARD_SUGGESTION_ZONE_2_X: hovered_suggestion_idx = 1
                         else: hovered_suggestion_idx = 2
                         
                         cv2.putText(frame, f"SUGGEST #{hovered_suggestion_idx+1}", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,255), 1)
@@ -136,14 +137,21 @@ class KeyboardGestureController:
                     else:
                         # Keyboard Zone (bottom 80%)
                         # Remap y from 0.2-1.0 to 0.0-1.0 for the keyboard rows
-                        eff_y = (y_raw - 0.2) / 0.8
+                        # Remap y from zone_height-1.0 to 0.0-1.0 for the keyboard rows
+                        eff_y = (y_raw - config.KEYBOARD_SUGGESTION_ZONE_HEIGHT) / (1.0 - config.KEYBOARD_SUGGESTION_ZONE_HEIGHT)
                         if eff_y < 0: eff_y = 0
                         
                         row = int(eff_y * self.rows)
-                        col = int(x_raw * self.cols)
-
-                        if 0 <= row < self.rows and 0 <= col < len(self.keys[row]):
-                            hovered_key = self.keys[row][col]
+                        
+                        if 0 <= row < self.rows:
+                            # Dynamic column mapping based on row length (since UI expands keys to fill width)
+                            # keys in this row
+                            row_keys = self.keys[row]
+                            num_keys = len(row_keys)
+                            col = int(x_raw * num_keys)
+                            
+                            if 0 <= col < num_keys:
+                                hovered_key = row_keys[col]
                             
                         dist = self._distance(index_tip, thumb_tip)
                         if dist < config.KEY_HOVER_DISTANCE and hovered_key:

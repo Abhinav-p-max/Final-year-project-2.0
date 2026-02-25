@@ -4,3 +4,4 @@ pyautogui
 vosk
 sounddevice
 numpy
+PyQt5
